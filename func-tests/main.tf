@@ -54,7 +54,7 @@ resource "pingfederate_oauth_access_token_manager" "reftokenmgr" {
   }
 
   attribute_contract {
-    extended_attributes = ["sub", "attr1", "attr2"]
+    extended_attributes = ["sub", "attr1"]
   }
 }
 
@@ -79,13 +79,6 @@ resource "pingfederate_oauth_access_token_mappings" "reftokenmgrcc" {
       type = "TEXT"
     }
     value = "Homer"
-  }
-  attribute_contract_fulfillment {
-    key_name = "attr2"
-    source {
-      type = "TEXT"
-    }
-    value = "Simpson"
   }
 }
 
@@ -160,3 +153,113 @@ resource "pingfederate_oauth_auth_server_settings" "settings" {
   refresh_token_length       = 42
   refresh_rolling_interval   = 0
 }
+
+
+resource "pingfederate_password_credential_validator" "simplepcv" {
+  name = "simplepcv"
+  plugin_descriptor_ref {
+    id = "org.sourceid.saml20.domain.SimpleUsernamePasswordCredentialValidator"
+  }
+
+  configuration {
+    tables {
+      name = "Users"
+      rows {
+        fields {
+          name  = "Username"
+          value = "homer"
+        }
+
+        sensitive_fields {
+          name  = "Password"
+          value = "abc123"
+        }
+
+        sensitive_fields {
+          name  = "Confirm Password"
+          value = "abc123"
+        }
+
+        fields {
+          name  = "Relax Password Requirements"
+          value = "true"
+        }
+      }
+    }
+  }
+  attribute_contract {
+    core_attributes = ["username"]
+  }
+}
+
+
+resource "pingfederate_idp_adapter" "htmladptr" {
+  name = "htmladptr"
+  plugin_descriptor_ref {
+    id = "com.pingidentity.adapters.httpbasic.idp.HttpBasicIdpAuthnAdapter"
+  }
+
+  configuration {
+    tables {
+      name = "Credential Validators"
+      rows {
+        fields {
+          name  = "Password Credential Validator Instance"
+          value = pingfederate_password_credential_validator.simplepcv.name
+        }
+      }
+    }
+    fields {
+      name  = "Realm"
+      value = "foo"
+    }
+
+    fields {
+      name  = "Challenge Retries"
+      value = "3"
+    }
+
+  }
+
+  attribute_contract {
+    core_attributes {
+      name      = "username"
+      pseudonym = true
+    }
+    extended_attributes {
+      name = "sub"
+    }
+  }
+  attribute_mapping {
+    attribute_contract_fulfillment {
+      key_name = "sub"
+      source {
+        type = "ADAPTER"
+      }
+      value = "sub"
+    }
+    attribute_contract_fulfillment {
+      key_name = "username"
+      source {
+        type = "ADAPTER"
+      }
+      value = "username"
+    }
+    # jdbc_attribute_source {
+    #   filter      = "\"\""
+    #   description = "foo"
+    #   schema      = "INFORMATION_SCHEMA"
+    #   table       = "ADMINISTRABLE_ROLE_AUTHORIZATIONS"
+    #   data_store_ref {
+    #     id = "ProvisionerDS"
+    #   }
+    #}
+  }
+}
+
+resource "pingfederate_authentication_policy_contract" "apc_simple" {
+  name = "apc_simple"
+  core_attributes = ["subject"]
+  # extended_attributes = ["foo", "bar"]
+}
+
