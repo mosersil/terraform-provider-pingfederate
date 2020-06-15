@@ -150,9 +150,9 @@ resource "pingfederate_oauth_auth_server_settings" "settings" {
     name        = "acc_no"
   }
 
-  persistent_grant_contract {
-    extended_attributes = []
-  }
+  # persistent_grant_contract {
+  #   extended_attributes = []
+  # }
 
   default_scope_description  = ""
   authorization_code_timeout = 60
