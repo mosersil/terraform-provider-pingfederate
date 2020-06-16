@@ -122,12 +122,65 @@ resource "pingfederate_oauth_client" "myoauthclientid" {
   }
 }
 
+resource "pingfederate_oauth_client" "myoauthcodeclientid" {
+  client_id = "myoauthcodeclientid"
+  name      = "myoauthcodeclientid"
+  redirect_uris = ["https://www.bob.com",]
+
+  grant_types = [
+    "CLIENT_CREDENTIALS","AUTHORIZATION_CODE",
+  ]
+
+  exclusive_scopes = ["acc_no", ]
+
+  restricted_response_types = ["code",]
+
+
+  client_auth {
+    // type                      = "CERTIFICATE"
+    // client_cert_issuer_dn     = ""
+    // client_cert_subject_dn    = ""
+    enforce_replay_prevention = false
+
+    secret = "abc123"
+    type   = "SECRET"
+  }
+
+  // jwks_settings {
+  //   jwks = "https://stuff"
+  // }
+  default_access_token_manager_ref {
+    id = pingfederate_oauth_access_token_manager.reftokenmgr.id
+  }
+
+  oidc_policy {
+    grant_access_session_revocation_api = false
+
+    logout_uris = [
+      "https://logout",
+      "https://foo",
+    ]
+
+    ping_access_logout_capable = true
+  }
+}
+
+
 
 resource "pingfederate_oauth_auth_server_settings" "settings" {
-  # scopes {
-  #   name        = "acc_no"
-  #   description = "Accout Number"
-  # }
+  scopes {
+    name        = "oidc"
+    description = "oidc"
+  }
+    scopes {
+    name        = "profile"
+    description = "profile"
+  }
+    scopes {
+    name        = "email"
+    description = "email"
+  }
+
 
   #   persistent_grant_contract {
   #     extended_attributes = ["woot"]
@@ -262,4 +315,70 @@ resource "pingfederate_authentication_policy_contract" "apc_simple" {
   core_attributes = ["subject"]
   # extended_attributes = ["foo", "bar"]
 }
+
+resource "pingfederate_oauth_openid_connect_policy" "demo" {
+  policy_id = "foo"
+  name      = "foo"
+  access_token_manager_ref {
+    id = pingfederate_oauth_access_token_manager.reftokenmgr.id
+  }
+  attribute_contract {
+    # core_attributes {
+    #   name = "sub"
+    # }
+    extended_attributes {
+      name                 = "email"
+      include_in_user_info = true
+    }
+    extended_attributes {
+      name                 = "email_verified"
+      include_in_user_info = true
+    }
+    extended_attributes {
+      name                 = "family_name"
+      include_in_user_info = true
+    }
+    extended_attributes {
+      name                 = "name"
+      include_in_user_info = true
+    }
+  }
+  attribute_mapping {
+    attribute_contract_fulfillment {
+      key_name = "sub"
+      source {
+        type = "NO_MAPPING"
+      }
+    }
+    attribute_contract_fulfillment {
+      key_name = "email"
+      source {
+        type = "NO_MAPPING"
+      }
+    }
+    attribute_contract_fulfillment {
+      key_name = "email_verified"
+      source {
+        type = "NO_MAPPING"
+      }
+    }
+    attribute_contract_fulfillment {
+      key_name = "family_name"
+      source {
+        type = "NO_MAPPING"
+      }
+    }
+    attribute_contract_fulfillment {
+      key_name = "name"
+      source {
+        type = "NO_MAPPING"
+      }
+    }
+  }
+
+//  scope_attribute_mappings = { //TODO hoping the new TF 2.0.0 SDK will finally support sensible maps
+//    address = ["foo", "bar"]
+// 
+}
+
 
