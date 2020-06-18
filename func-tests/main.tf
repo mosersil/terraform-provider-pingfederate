@@ -54,9 +54,66 @@ resource "pingfederate_oauth_access_token_manager" "reftokenmgr" {
   }
 
   attribute_contract {
-    extended_attributes = ["sub", "attr1"]
+    extended_attributes = ["sub",]
   }
 }
+
+resource "pingfederate_oauth_access_token_manager" "reftokenmgrcode" {
+  instance_id = "reftokenmgrcode"
+  name        = "reftokenmgrcode"
+
+  plugin_descriptor_ref {
+    id = "org.sourceid.oauth20.token.plugin.impl.ReferenceBearerAccessTokenManagementPlugin"
+  }
+
+  configuration {
+    fields {
+      name  = "Token Length"
+      value = "28"
+    }
+
+    fields {
+      name  = "Token Lifetime"
+      value = "120"
+    }
+
+    fields {
+      name  = "Lifetime Extension Policy"
+      value = "ALL"
+    }
+
+    fields {
+      name  = "Maximum Token Lifetime"
+      value = ""
+    }
+
+    fields {
+      name  = "Lifetime Extension Threshold Percentage"
+      value = "30"
+    }
+
+    fields {
+      name  = "Mode for Synchronous RPC"
+      value = "3"
+    }
+
+    fields {
+      name  = "RPC Timeout"
+      value = "500"
+    }
+
+    fields {
+      name  = "Expand Scope Groups"
+      value = "false"
+    }
+  }
+
+  attribute_contract {
+    extended_attributes = ["sub",]
+  }
+}
+
+
 
 resource "pingfederate_oauth_access_token_mappings" "reftokenmgrcc" {
   access_token_manager_ref {
@@ -73,14 +130,28 @@ resource "pingfederate_oauth_access_token_mappings" "reftokenmgrcc" {
     }
     value = "ClientId"
   }
-  attribute_contract_fulfillment {
-    key_name = "attr1"
-    source {
-      type = "TEXT"
+}
+
+resource "pingfederate_oauth_access_token_mappings" "reftokenmgrcode" {
+  
+  access_token_manager_ref {
+    id = pingfederate_oauth_access_token_manager.reftokenmgrcode.id
+  }
+  context {
+    type = "AUTHENTICATION_POLICY_CONTRACT"
+    context_ref {
+     id = pingfederate_authentication_policy_contract.apc_simple.id
     }
-    value = "Homer"
+  }
+  attribute_contract_fulfillment {
+    key_name = "sub"
+    source {
+      type = "AUTHENTICATION_POLICY_CONTRACT"
+    }
+    value = "subject"
   }
 }
+
 
 resource "pingfederate_oauth_client" "myoauthclientid" {
   client_id = "myoauthclientid"
@@ -130,8 +201,6 @@ resource "pingfederate_oauth_client" "myoauthcodeclientid" {
   grant_types = [
     "CLIENT_CREDENTIALS","AUTHORIZATION_CODE",
   ]
-
-  exclusive_scopes = ["acc_no", ]
 
   restricted_response_types = ["code",]
 
@@ -246,8 +315,8 @@ resource "pingfederate_password_credential_validator" "simplepcv" {
 }
 
 
-resource "pingfederate_idp_adapter" "htmladptr" {
-  name = "htmladptr"
+resource "pingfederate_idp_adapter" "basicadptr" {
+  name = "basicadptr"
   plugin_descriptor_ref {
     id = "com.pingidentity.adapters.httpbasic.idp.HttpBasicIdpAuthnAdapter"
   }
@@ -280,23 +349,43 @@ resource "pingfederate_idp_adapter" "htmladptr" {
       pseudonym = true
     }
     extended_attributes {
-      name = "sub"
+      name = "first_name"
+    }
+    extended_attributes {
+      name = "family_name"
+    }
+       extended_attributes {
+      name = "email"
     }
   }
-  attribute_mapping {
-    attribute_contract_fulfillment {
-      key_name = "sub"
-      source {
-        type = "ADAPTER"
-      }
-      value = "sub"
-    }
+  attribute_mapping {    
     attribute_contract_fulfillment {
       key_name = "username"
       source {
         type = "ADAPTER"
       }
       value = "username"
+    }
+    attribute_contract_fulfillment {
+      key_name = "first_name"
+      source {
+        type = "TEXT"
+      }
+      value = "Homer"
+    }
+    attribute_contract_fulfillment {
+      key_name = "family_name"
+      source {
+        type = "TEXT"
+      }
+      value = "Simpson"
+    }
+    attribute_contract_fulfillment {
+      key_name = "email"
+      source {
+        type = "TEXT"
+      }
+      value = "homer.simpson@springfield.net"
     }
     # jdbc_attribute_source {
     #   filter      = "\"\""
@@ -313,7 +402,7 @@ resource "pingfederate_idp_adapter" "htmladptr" {
 resource "pingfederate_authentication_policy_contract" "apc_simple" {
   name = "apc_simple"
   core_attributes = ["subject"]
-  # extended_attributes = ["foo", "bar"]
+  extended_attributes = ["first_name", "family_name", "email",]
 }
 
 resource "pingfederate_oauth_openid_connect_policy" "demo" {
@@ -382,3 +471,22 @@ resource "pingfederate_oauth_openid_connect_policy" "demo" {
 }
 
 
+resource "pingfederate_oauth_authentication_policy_contract_mapping" "apc_mappings" {
+  authentication_policy_contract_ref {
+    id = pingfederate_authentication_policy_contract.apc_simple.id
+  }
+  attribute_contract_fulfillment {
+    key_name = "USER_NAME"
+    source {
+      type = "AUTHENTICATION_POLICY_CONTRACT"
+    }
+    value = "email"
+  }
+  attribute_contract_fulfillment {
+    key_name = "USER_KEY"
+    source {
+      type = "AUTHENTICATION_POLICY_CONTRACT"
+    }
+    value = "email"
+  }
+}
