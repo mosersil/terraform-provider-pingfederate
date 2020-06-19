@@ -1,20 +1,23 @@
 package pingfederate
 
 import (
-	"fmt"
+	"context"
 
-	"github.com/hashicorp/terraform/helper/schema"
-	pf "github.com/iwarapter/pingfederate-sdk-go/pingfederate"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/iwarapter/pingfederate-sdk-go/services/spAuthenticationPolicyContractMappings"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	pf "github.com/iwarapter/pingfederate-sdk-go/pingfederate/models"
 )
 
 func resourcePingFederateSpAuthenticationPolicyContractMappingResource() *schema.Resource {
 	return &schema.Resource{
-		Create: resourcePingFederateSpAuthenticationPolicyContractMappingResourceCreate,
-		Read:   resourcePingFederateSpAuthenticationPolicyContractMappingResourceRead,
-		Update: resourcePingFederateSpAuthenticationPolicyContractMappingResourceUpdate,
-		Delete: resourcePingFederateSpAuthenticationPolicyContractMappingResourceDelete,
+		CreateContext: resourcePingFederateSpAuthenticationPolicyContractMappingResourceCreate,
+		ReadContext:   resourcePingFederateSpAuthenticationPolicyContractMappingResourceRead,
+		UpdateContext: resourcePingFederateSpAuthenticationPolicyContractMappingResourceUpdate,
+		DeleteContext: resourcePingFederateSpAuthenticationPolicyContractMappingResourceDelete,
 		Importer: &schema.ResourceImporter{
-			State: schema.ImportStatePassthrough,
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 		Schema: resourcePingFederateSpAuthenticationPolicyContractMappingResourceSchema(),
 	}
@@ -73,81 +76,82 @@ func resourcePingFederateSpAuthenticationPolicyContractMappingResourceSchema() m
 	}
 }
 
-func resourcePingFederateSpAuthenticationPolicyContractMappingResourceCreate(d *schema.ResourceData, m interface{}) error {
-	svc := m.(*pf.PfClient).SpAuthenticationPolicyContractMappings
-	input := pf.CreateApcToSpAdapterMappingInput{
+func resourcePingFederateSpAuthenticationPolicyContractMappingResourceCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	svc := m.(pfClient).SpAuthenticationPolicyContractMappings
+	input := spAuthenticationPolicyContractMappings.CreateApcToSpAdapterMappingInput{
 		Body:                     *resourcePingFederateSpAuthenticationPolicyContractMappingResourceReadData(d),
 		BypassExternalValidation: Bool(d.Get("bypass_external_validation").(bool)),
 	}
 	result, _, err := svc.CreateApcToSpAdapterMapping(&input)
 	if err != nil {
-		return fmt.Errorf("%v", err)
+		return diag.Errorf("unable to create SpAuthenticationPolicyContractMapping: %s", err)
 	}
 	d.SetId(*result.Id)
 	return resourcePingFederateSpAuthenticationPolicyContractMappingResourceReadResult(d, result)
 }
 
-func resourcePingFederateSpAuthenticationPolicyContractMappingResourceRead(d *schema.ResourceData, m interface{}) error {
-	svc := m.(*pf.PfClient).SpAuthenticationPolicyContractMappings
-	input := pf.GetApcToSpAdapterMappingByIdInput{
+func resourcePingFederateSpAuthenticationPolicyContractMappingResourceRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	svc := m.(pfClient).SpAuthenticationPolicyContractMappings
+	input := spAuthenticationPolicyContractMappings.GetApcToSpAdapterMappingByIdInput{
 		Id: d.Id(),
 	}
 	result, _, err := svc.GetApcToSpAdapterMappingById(&input)
 	if err != nil {
-		return fmt.Errorf("%v", err)
+		return diag.Errorf("unable to read SpAuthenticationPolicyContractMapping: %s", err)
 	}
 	return resourcePingFederateSpAuthenticationPolicyContractMappingResourceReadResult(d, result)
 }
 
-func resourcePingFederateSpAuthenticationPolicyContractMappingResourceUpdate(d *schema.ResourceData, m interface{}) error {
-	svc := m.(*pf.PfClient).SpAuthenticationPolicyContractMappings
-	input := pf.UpdateApcToSpAdapterMappingByIdInput{
+func resourcePingFederateSpAuthenticationPolicyContractMappingResourceUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	svc := m.(pfClient).SpAuthenticationPolicyContractMappings
+	input := spAuthenticationPolicyContractMappings.UpdateApcToSpAdapterMappingByIdInput{
 		Id:                       d.Id(),
 		Body:                     *resourcePingFederateSpAuthenticationPolicyContractMappingResourceReadData(d),
 		BypassExternalValidation: Bool(d.Get("bypass_external_validation").(bool)),
 	}
 	result, _, err := svc.UpdateApcToSpAdapterMappingById(&input)
 	if err != nil {
-		return fmt.Errorf("%v", err)
+		return diag.Errorf("unable to update SpAuthenticationPolicyContractMapping: %s", err)
 	}
 
 	return resourcePingFederateSpAuthenticationPolicyContractMappingResourceReadResult(d, result)
 }
 
-func resourcePingFederateSpAuthenticationPolicyContractMappingResourceDelete(d *schema.ResourceData, m interface{}) error {
-	svc := m.(*pf.PfClient).SpAuthenticationPolicyContractMappings
-	input := pf.DeleteApcToSpAdapterMappingByIdInput{
+func resourcePingFederateSpAuthenticationPolicyContractMappingResourceDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	svc := m.(pfClient).SpAuthenticationPolicyContractMappings
+	input := spAuthenticationPolicyContractMappings.DeleteApcToSpAdapterMappingByIdInput{
 		Id: d.Id(),
 	}
 	_, _, err := svc.DeleteApcToSpAdapterMappingById(&input)
 	if err != nil {
-		return fmt.Errorf("%v", err)
+		return diag.Errorf("unable to delete SpAuthenticationPolicyContractMapping: %s", err)
 	}
 	return nil
 }
 
-func resourcePingFederateSpAuthenticationPolicyContractMappingResourceReadResult(d *schema.ResourceData, rv *pf.ApcToSpAdapterMapping) (err error) {
-	setResourceDataString(d, "source_id", rv.SourceId)
-	setResourceDataString(d, "target_id", rv.TargetId)
-	setResourceDataString(d, "default_target_resource", rv.DefaultTargetResource)
-	setResourceDataString(d, "license_connection_group_assignment", rv.LicenseConnectionGroupAssignment)
+func resourcePingFederateSpAuthenticationPolicyContractMappingResourceReadResult(d *schema.ResourceData, rv *pf.ApcToSpAdapterMapping) diag.Diagnostics {
+	var diags diag.Diagnostics
+	setResourceDataStringithDiagnostic(d, "source_id", rv.SourceId, &diags)
+	setResourceDataStringithDiagnostic(d, "target_id", rv.TargetId, &diags)
+	setResourceDataStringithDiagnostic(d, "default_target_resource", rv.DefaultTargetResource, &diags)
+	setResourceDataStringithDiagnostic(d, "license_connection_group_assignment", rv.LicenseConnectionGroupAssignment, &diags)
 
 	if rv.AttributeContractFulfillment != nil {
-		if err = d.Set("attribute_contract_fulfillment", flattenMapOfAttributeFulfillmentValue(rv.AttributeContractFulfillment)); err != nil {
-			return err
+		if err := d.Set("attribute_contract_fulfillment", flattenMapOfAttributeFulfillmentValue(rv.AttributeContractFulfillment)); err != nil {
+			diags = append(diags, diag.FromErr(err)...)
 		}
 	}
 	if rv.IssuanceCriteria != nil && (rv.IssuanceCriteria.ExpressionCriteria != nil && rv.IssuanceCriteria.ConditionalCriteria != nil) {
-		if err = d.Set("issuance_criteria", flattenIssuanceCriteria(rv.IssuanceCriteria)); err != nil {
-			return err
+		if err := d.Set("issuance_criteria", flattenIssuanceCriteria(rv.IssuanceCriteria)); err != nil {
+			diags = append(diags, diag.FromErr(err)...)
 		}
 	}
 
 	if err := flattenAttributeSources(d, rv.AttributeSources); err != nil {
-		return err
+		diags = append(diags, diag.FromErr(err)...)
 	}
 
-	return nil
+	return diags
 }
 
 func resourcePingFederateSpAuthenticationPolicyContractMappingResourceReadData(d *schema.ResourceData) *pf.ApcToSpAdapterMapping {

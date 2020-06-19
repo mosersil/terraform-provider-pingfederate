@@ -4,25 +4,26 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform/helper/resource"
-	"github.com/hashicorp/terraform/terraform"
-	pf "github.com/iwarapter/pingfederate-sdk-go/pingfederate"
+	"github.com/iwarapter/pingfederate-sdk-go/services/oauthAccessTokenMappings"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestAccPingFederateOauthAccessTokenMappings(t *testing.T) {
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		// PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckPingFederateOauthAccessTokenMappingsDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccPingFederateOauthAccessTokenMappingsConfig( "ClientId"),
+				Config: testAccPingFederateOauthAccessTokenMappingsConfig("ClientId"),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckPingFederateOauthAccessTokenMappingsExists("pingfederate_oauth_access_token_mappings.demo"),
 				),
 			},
 			{
-				Config: testAccPingFederateOauthAccessTokenMappingsConfig( "ClientId"),
+				Config: testAccPingFederateOauthAccessTokenMappingsConfig("ClientId"),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckPingFederateOauthAccessTokenMappingsExists("pingfederate_oauth_access_token_mappings.demo"),
 				),
@@ -120,8 +121,8 @@ func testAccCheckPingFederateOauthAccessTokenMappingsExists(n string) resource.T
 			return fmt.Errorf("No rule ID is set")
 		}
 
-		conn := testAccProvider.Meta().(*pf.PfClient).OauthAccessTokenMappings
-		result, _, err := conn.GetMapping(&pf.GetMappingInput{Id: rs.Primary.ID})
+		conn := testAccProvider.Meta().(pfClient).OauthAccessTokenMappings
+		result, _, err := conn.GetMapping(&oauthAccessTokenMappings.GetMappingInput{Id: rs.Primary.ID})
 
 		if err != nil {
 			return fmt.Errorf("Error: OauthAccessTokenMappings (%s) not found", n)

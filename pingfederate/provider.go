@@ -1,13 +1,15 @@
 package pingfederate
 
 import (
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/terraform"
+	"context"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 //Provider does stuff
 //
-func Provider() terraform.ResourceProvider {
+func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"username": {
@@ -36,19 +38,22 @@ func Provider() terraform.ResourceProvider {
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"pingfederate_authentication_policy_contract":            resourcePingFederateAuthenticationPolicyContractResource(),
-			"pingfederate_authentication_selector":                   resourcePingFederateAuthenticationSelectorResource(),
-			"pingfederate_data_store":                                resourcePingFederateDataStoreResource(),
-			"pingfederate_idp_adapter":                               resourcePingFederateIdpAdapterResource(),
-			"pingfederate_oauth_auth_server_settings":                resourcePingFederateOauthAuthServerSettingsResource(),
-			"pingfederate_oauth_client":                              resourcePingFederateOauthClientResource(),
-			"pingfederate_oauth_access_token_manager":                resourcePingFederateOauthAccessTokenManagersResource(),
-			"pingfederate_oauth_access_token_mappings":               resourcePingFederateOauthAccessTokenMappingsResource(),
-			"pingfederate_sp_adapter":                                resourcePingFederateSpAdapterResource(),
-			"pingfederate_sp_authentication_policy_contract_mapping": resourcePingFederateSpAuthenticationPolicyContractMappingResource(),
-			"pingfederate_password_credential_validator":             resourcePingFederatePasswordCredentialValidatorResource(),
+			"pingfederate_authentication_policy_contract":               resourcePingFederateAuthenticationPolicyContractResource(),
+			"pingfederate_authentication_selector":                      resourcePingFederateAuthenticationSelectorResource(),
+			"pingfederate_jdbc_data_store":                              resourcePingFederateJdbcDataStoreResource(),
+			"pingfederate_ldap_data_store":                              resourcePingFederateLdapDataStoreResource(),
+			"pingfederate_idp_adapter":                                  resourcePingFederateIdpAdapterResource(),
+			"pingfederate_oauth_auth_server_settings":                   resourcePingFederateOauthAuthServerSettingsResource(),
+			"pingfederate_oauth_authentication_policy_contract_mapping": resourcePingFederateOauthAuthenticationPolicyContractMappingsResource(),
+			"pingfederate_oauth_client":                                 resourcePingFederateOauthClientResource(),
+			"pingfederate_oauth_access_token_manager":                   resourcePingFederateOauthAccessTokenManagersResource(),
+			"pingfederate_oauth_access_token_mappings":                  resourcePingFederateOauthAccessTokenMappingsResource(),
+			"pingfederate_oauth_openid_connect_policy":                  resourcePingFederateOpenIdConnectPolicyResource(),
+			"pingfederate_sp_adapter":                                   resourcePingFederateSpAdapterResource(),
+			"pingfederate_sp_authentication_policy_contract_mapping":    resourcePingFederateSpAuthenticationPolicyContractMappingResource(),
+			"pingfederate_password_credential_validator":                resourcePingFederatePasswordCredentialValidatorResource(),
 		},
-		ConfigureFunc: providerConfigure,
+		ConfigureContextFunc: providerConfigure,
 	}
 }
 
@@ -63,7 +68,7 @@ func init() {
 	}
 }
 
-func providerConfigure(d *schema.ResourceData) (interface{}, error) {
+func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	config := &Config{
 		Username: d.Get("username").(string),
 		Password: d.Get("password").(string),
@@ -87,20 +92,6 @@ func expandStringList(configured []interface{}) []*string {
 	return vs
 }
 
-// Takes the result of flatmap.Expand for an array of strings
-// and returns a []*int
-func expandIntList(configured []interface{}) []*int {
-	vs := make([]*int, 0, len(configured))
-	for _, v := range configured {
-		_, ok := v.(int)
-		if ok {
-			val := v.(int)
-			vs = append(vs, &val)
-		}
-	}
-	return vs
-}
-
 // Bool is a helper routine that allocates a new bool value
 // to store v and returns a pointer to it.
 func Bool(v bool) *bool { return &v }
@@ -109,37 +100,30 @@ func Bool(v bool) *bool { return &v }
 // to store v and returns a pointer to it.
 func Int(v int) *int { return &v }
 
-// Int64 is a helper routine that allocates a new int64 value
-// to store v and returns a pointer to it.
-func Int64(v int64) *int64 { return &v }
-
 // String is a helper routine that allocates a new string value
 // to store v and returns a pointer to it.
 func String(v string) *string { return &v }
 
-func setResourceDataString(d *schema.ResourceData, name string, data *string) error {
+func setResourceDataStringithDiagnostic(d *schema.ResourceData, name string, data *string, diags *diag.Diagnostics) {
 	if data != nil {
 		if err := d.Set(name, *data); err != nil {
-			return err
+			*diags = append(*diags, diag.FromErr(err)...)
 		}
 	}
-	return nil
 }
 
-func setResourceDataInt(d *schema.ResourceData, name string, data *int) error {
+func setResourceDataIntWithDiagnostic(d *schema.ResourceData, name string, data *int, diags *diag.Diagnostics) {
 	if data != nil {
 		if err := d.Set(name, *data); err != nil {
-			return err
+			*diags = append(*diags, diag.FromErr(err)...)
 		}
 	}
-	return nil
 }
 
-func setResourceDataBool(d *schema.ResourceData, name string, data *bool) error {
+func setResourceDataBoolWithDiagnostic(d *schema.ResourceData, name string, data *bool, diags *diag.Diagnostics) {
 	if data != nil {
 		if err := d.Set(name, *data); err != nil {
-			return err
+			*diags = append(*diags, diag.FromErr(err)...)
 		}
 	}
-	return nil
 }

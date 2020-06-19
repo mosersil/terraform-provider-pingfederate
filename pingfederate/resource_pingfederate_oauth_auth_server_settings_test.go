@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform/helper/resource"
-	"github.com/hashicorp/terraform/terraform"
-	pf "github.com/iwarapter/pingfederate-sdk-go/pingfederate"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	pf "github.com/iwarapter/pingfederate-sdk-go/pingfederate/models"
 )
 
 func TestAccPingFederateOauthAuthServerSettings(t *testing.T) {
@@ -37,7 +37,7 @@ func testAccCheckPingFederateOauthAuthServerSettingsDestroy(s *terraform.State) 
 }
 
 func testAccPingFederateOauthAuthServerSettingsConfig(name, configUpdate string) string {
-	return fmt.Sprintf(`
+	return `
 	resource "pingfederate_oauth_auth_server_settings" "settings" {
 		scopes {
 			name        = "address"
@@ -90,7 +90,7 @@ func testAccPingFederateOauthAuthServerSettingsConfig(name, configUpdate string)
 		authorization_code_entropy = 30
 		refresh_token_length       = 42
 		refresh_rolling_interval   = 0
-	}`) //, name, name, configUpdate)
+	}`
 }
 
 func testAccCheckPingFederateOauthAuthServerSettingsExists(n string, c int64, out *pf.AuthorizationServerSettings) resource.TestCheckFunc {
@@ -104,7 +104,7 @@ func testAccCheckPingFederateOauthAuthServerSettingsExists(n string, c int64, ou
 			return fmt.Errorf("No rule ID is set")
 		}
 
-		conn := testAccProvider.Meta().(*pf.PfClient).OauthAuthServerSettings
+		conn := testAccProvider.Meta().(pfClient).OauthAuthServerSettings
 		result, _, err := conn.GetAuthorizationServerSettings()
 
 		if err != nil {

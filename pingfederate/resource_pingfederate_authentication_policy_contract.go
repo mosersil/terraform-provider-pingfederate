@@ -1,20 +1,23 @@
 package pingfederate
 
 import (
-	"fmt"
+	"context"
 
-	"github.com/hashicorp/terraform/helper/schema"
-	pf "github.com/iwarapter/pingfederate-sdk-go/pingfederate"
+	"github.com/iwarapter/pingfederate-sdk-go/services/authenticationPolicyContracts"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	pf "github.com/iwarapter/pingfederate-sdk-go/pingfederate/models"
 )
 
 func resourcePingFederateAuthenticationPolicyContractResource() *schema.Resource {
 	return &schema.Resource{
-		Create: resourcePingFederateAuthenticationPolicyContractResourceCreate,
-		Read:   resourcePingFederateAuthenticationPolicyContractResourceRead,
-		Update: resourcePingFederateAuthenticationPolicyContractResourceUpdate,
-		Delete: resourcePingFederateAuthenticationPolicyContractResourceDelete,
+		CreateContext: resourcePingFederateAuthenticationPolicyContractResourceCreate,
+		ReadContext:   resourcePingFederateAuthenticationPolicyContractResourceRead,
+		UpdateContext: resourcePingFederateAuthenticationPolicyContractResourceUpdate,
+		DeleteContext: resourcePingFederateAuthenticationPolicyContractResourceDelete,
 		Importer: &schema.ResourceImporter{
-			State: schema.ImportStatePassthrough,
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 
 		Schema: resourcePingFederateAuthenticationPolicyContractResourceSchema(),
@@ -23,11 +26,11 @@ func resourcePingFederateAuthenticationPolicyContractResource() *schema.Resource
 
 func resourcePingFederateAuthenticationPolicyContractResourceSchema() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
-		"name": &schema.Schema{
+		"name": {
 			Type:     schema.TypeString,
 			Required: true,
 		},
-		"core_attributes": &schema.Schema{
+		"core_attributes": {
 			Type:     schema.TypeSet,
 			Required: true,
 			MinItems: 1,
@@ -35,7 +38,7 @@ func resourcePingFederateAuthenticationPolicyContractResourceSchema() map[string
 				Type: schema.TypeString,
 			},
 		},
-		"extended_attributes": &schema.Schema{
+		"extended_attributes": {
 			Type:     schema.TypeSet,
 			Optional: true,
 			MinItems: 1,
@@ -46,67 +49,70 @@ func resourcePingFederateAuthenticationPolicyContractResourceSchema() map[string
 	}
 }
 
-func resourcePingFederateAuthenticationPolicyContractResourceCreate(d *schema.ResourceData, m interface{}) error {
-	svc := m.(*pf.PfClient).AuthenticationPolicyContracts
-	input := pf.CreateAuthenticationPolicyContractInput{
+func resourcePingFederateAuthenticationPolicyContractResourceCreate(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	svc := m.(pfClient).AuthenticationPolicyContracts
+	input := authenticationPolicyContracts.CreateAuthenticationPolicyContractInput{
 		Body: *resourcePingFederateAuthenticationPolicyContractResourceReadData(d),
 	}
 	result, _, err := svc.CreateAuthenticationPolicyContract(&input)
 	if err != nil {
-		return fmt.Errorf(err.Error())
+		return diag.Errorf("unable to create AuthenticationPolicyContracts: %s", err)
 	}
 	d.SetId(*result.Id)
 	return resourcePingFederateAuthenticationPolicyContractResourceReadResult(d, result)
 }
 
-func resourcePingFederateAuthenticationPolicyContractResourceRead(d *schema.ResourceData, m interface{}) error {
-	svc := m.(*pf.PfClient).AuthenticationPolicyContracts
-	input := pf.GetAuthenticationPolicyContractInput{
+func resourcePingFederateAuthenticationPolicyContractResourceRead(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	svc := m.(pfClient).AuthenticationPolicyContracts
+	input := authenticationPolicyContracts.GetAuthenticationPolicyContractInput{
 		Id: d.Id(),
 	}
 	result, _, err := svc.GetAuthenticationPolicyContract(&input)
 	if err != nil {
-		return fmt.Errorf(err.Error())
+		return diag.Errorf("unable to read AuthenticationPolicyContracts: %s", err)
 	}
 	return resourcePingFederateAuthenticationPolicyContractResourceReadResult(d, result)
 }
 
-func resourcePingFederateAuthenticationPolicyContractResourceUpdate(d *schema.ResourceData, m interface{}) error {
-	svc := m.(*pf.PfClient).AuthenticationPolicyContracts
-	input := pf.UpdateAuthenticationPolicyContractInput{
+func resourcePingFederateAuthenticationPolicyContractResourceUpdate(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	svc := m.(pfClient).AuthenticationPolicyContracts
+	input := authenticationPolicyContracts.UpdateAuthenticationPolicyContractInput{
 		Id:   d.Id(),
 		Body: *resourcePingFederateAuthenticationPolicyContractResourceReadData(d),
 	}
 	result, _, err := svc.UpdateAuthenticationPolicyContract(&input)
 	if err != nil {
-		return fmt.Errorf(err.Error())
+		return diag.Errorf("unable to update AuthenticationPolicyContracts: %s", err)
 	}
 
 	return resourcePingFederateAuthenticationPolicyContractResourceReadResult(d, result)
 }
 
-func resourcePingFederateAuthenticationPolicyContractResourceDelete(d *schema.ResourceData, m interface{}) error {
-	svc := m.(*pf.PfClient).AuthenticationPolicyContracts
-	input := pf.DeleteAuthenticationPolicyContractInput{
+func resourcePingFederateAuthenticationPolicyContractResourceDelete(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	svc := m.(pfClient).AuthenticationPolicyContracts
+	input := authenticationPolicyContracts.DeleteAuthenticationPolicyContractInput{
 		Id: d.Id(),
 	}
 	_, _, err := svc.DeleteAuthenticationPolicyContract(&input)
 	if err != nil {
-		return fmt.Errorf(err.Error())
+		return diag.Errorf("unable to delete AuthenticationPolicyContracts: %s", err)
 	}
 	return nil
 }
 
-func resourcePingFederateAuthenticationPolicyContractResourceReadResult(d *schema.ResourceData, rv *pf.AuthenticationPolicyContract) (err error) {
-	setResourceDataString(d, "name", rv.Name)
+func resourcePingFederateAuthenticationPolicyContractResourceReadResult(d *schema.ResourceData, rv *pf.AuthenticationPolicyContract) diag.Diagnostics {
+	var diags diag.Diagnostics
+	setResourceDataStringithDiagnostic(d, "name", rv.Name, &diags)
 	if rv.ExtendedAttributes != nil && len(*rv.ExtendedAttributes) > 0 {
-		if err = d.Set("extended_attributes", flattenAuthenticationPolicyContractAttribute(*rv.ExtendedAttributes)); err != nil {
-			return err
+		if err := d.Set("extended_attributes", flattenAuthenticationPolicyContractAttribute(*rv.ExtendedAttributes)); err != nil {
+			diags = append(diags, diag.FromErr(err)...)
+
 		}
 	}
 	if rv.CoreAttributes != nil && len(*rv.CoreAttributes) > 0 {
-		if err = d.Set("core_attributes", flattenAuthenticationPolicyContractAttribute(*rv.CoreAttributes)); err != nil {
-			return err
+		if err := d.Set("core_attributes", flattenAuthenticationPolicyContractAttribute(*rv.CoreAttributes)); err != nil {
+			diags = append(diags, diag.FromErr(err)...)
+
 		}
 	}
 

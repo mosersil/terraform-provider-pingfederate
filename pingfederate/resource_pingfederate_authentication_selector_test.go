@@ -1,18 +1,18 @@
 package pingfederate
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
+	"regexp"
 	"testing"
 
+	"github.com/iwarapter/pingfederate-sdk-go/services/authenticationSelectors"
+
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/terraform/helper/resource"
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/terraform"
-	pf "github.com/iwarapter/pingfederate-sdk-go/pingfederate"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	pf "github.com/iwarapter/pingfederate-sdk-go/pingfederate/models"
 )
 
 func TestAccPingFederateAuthenticationSelectorResource(t *testing.T) {
@@ -33,6 +33,10 @@ func TestAccPingFederateAuthenticationSelectorResource(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckPingFederateAuthenticationSelectorResourceExists("pingfederate_authentication_selector.demo"),
 				),
+			},
+			{
+				Config:      testAccPingFederateAuthenticationSelectorResourceConfigWrongPlugins(),
+				ExpectError: regexp.MustCompile(`unable to find plugin_descriptor for com\.pingidentity\.pf\.selectors\.cidr\.wrong available plugins:`),
 			},
 		},
 	})
@@ -67,6 +71,32 @@ func testAccPingFederateAuthenticationSelectorResourceConfig(configUpdate string
 }`, configUpdate)
 }
 
+func testAccPingFederateAuthenticationSelectorResourceConfigWrongPlugins() string {
+	return `
+resource "pingfederate_authentication_selector" "demo" {
+  name = "wee"
+  plugin_descriptor_ref {
+	id = "com.pingidentity.pf.selectors.cidr.wrong"
+  }
+
+  configuration {
+	fields {
+      name = "Result Attribute Name"
+	  value = ""
+	}
+	tables {
+	  name = "Networks"
+	  rows {
+		fields {
+		  name  = "Network Range (CIDR notation)"
+		  value = "127.0.0.1"
+		}
+	  }
+	}
+  }
+}`
+}
+
 func testAccCheckPingFederateAuthenticationSelectorResourceExists(n string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
@@ -78,8 +108,8 @@ func testAccCheckPingFederateAuthenticationSelectorResourceExists(n string) reso
 			return fmt.Errorf("No rule ID is set")
 		}
 
-		conn := testAccProvider.Meta().(*pf.PfClient).AuthenticationSelectors
-		result, _, err := conn.GetAuthenticationSelector(&pf.GetAuthenticationSelectorInput{Id: rs.Primary.ID})
+		conn := testAccProvider.Meta().(pfClient).AuthenticationSelectors
+		result, _, err := conn.GetAuthenticationSelector(&authenticationSelectors.GetAuthenticationSelectorInput{Id: rs.Primary.ID})
 
 		if err != nil {
 			return fmt.Errorf("Error: AuthenticationSelector (%s) not found", n)
@@ -91,6 +121,39 @@ func testAccCheckPingFederateAuthenticationSelectorResourceExists(n string) reso
 
 		return nil
 	}
+}
+
+type authenticationSelectorMock struct {
+	authenticationSelectors.AuthenticationSelectorsAPI
+}
+
+func (m authenticationSelectorMock) GetAuthenticationSelectorDescriptorsById(input *authenticationSelectors.GetAuthenticationSelectorDescriptorsByIdInput) (output *pf.AuthenticationSelectorDescriptor, resp *http.Response, err error) {
+	return &pf.AuthenticationSelectorDescriptor{
+		AttributeContract: nil,
+		ClassName:         String("com.pingidentity.pf.selectors.cidr.CIDRAdapterSelector"),
+		ConfigDescriptor: &pf.PluginConfigDescriptor{
+			ActionDescriptors: nil,
+			Description:       nil,
+			Fields:            &[]*pf.FieldDescriptor{},
+			Tables: &[]*pf.TableDescriptor{
+				{
+					Columns: &[]*pf.FieldDescriptor{
+						{
+							Type: String("TEXT"),
+							Name: String("Username"),
+						},
+					},
+					Description:       nil,
+					Label:             nil,
+					Name:              String("Networks"),
+					RequireDefaultRow: nil,
+				},
+			},
+		},
+		Id:                       String("com.pingidentity.pf.selectors.cidr.CIDRAdapterSelector"),
+		Name:                     String("CIDR Authentication Selector"),
+		SupportsExtendedContract: nil,
+	}, nil, nil
 }
 
 func Test_resourcePingFederateAuthenticationSelectorResourceReadData(t *testing.T) {
@@ -138,50 +201,11 @@ func Test_resourcePingFederateAuthenticationSelectorResourceReadData(t *testing.
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("tc:%v", i), func(t *testing.T) {
 
-			descs := pf.PluginConfigDescriptor{
-				ActionDescriptors: nil,
-				Description:       nil,
-				Fields:            &[]*pf.FieldDescriptor{},
-				Tables: &[]*pf.TableDescriptor{
-					{
-						Columns: &[]*pf.FieldDescriptor{
-							{
-								Type: String("TEXT"),
-								Name: String("Username"),
-							},
-						},
-						Description:       nil,
-						Label:             nil,
-						Name:              String("Networks"),
-						RequireDefaultRow: nil,
-					},
-				},
-			}
-
-			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-				// Test request parameters
-				equals(t, req.URL.String(), "/authenticationSelectors/descriptors/com.pingidentity.pf.selectors.cidr.CIDRAdapterSelector")
-				// Send response to be tested
-				b, _ := json.Marshal(pf.AuthenticationSelectorDescriptor{
-					AttributeContract:        nil,
-					ClassName:                String("com.pingidentity.pf.selectors.cidr.CIDRAdapterSelector"),
-					ConfigDescriptor:         &descs,
-					Id:                       String("com.pingidentity.pf.selectors.cidr.CIDRAdapterSelector"),
-					Name:                     String("CIDR Authentication Selector"),
-					SupportsExtendedContract: nil,
-				})
-				rw.Write(b)
-			}))
-			// Close the server when test finishes
-			defer server.Close()
-
-			// Use Client & URL from our local test server
-			url, _ := url.Parse(server.URL)
-			c := pf.NewClient("", "", url, "", server.Client())
+			c := authenticationSelectorMock{}
 
 			resourceSchema := resourcePingFederateAuthenticationSelectorResourceSchema()
 			resourceLocalData := schema.TestResourceDataRaw(t, resourceSchema, map[string]interface{}{})
-			resourcePingFederateAuthenticationSelectorResourceReadResult(resourceLocalData, &tc.Resource, c.AuthenticationSelectors)
+			resourcePingFederateAuthenticationSelectorResourceReadResult(resourceLocalData, &tc.Resource, c)
 
 			if got := *resourcePingFederateAuthenticationSelectorResourceReadData(resourceLocalData); !cmp.Equal(got, tc.Resource) {
 				t.Errorf("resourcePingFederateAuthenticationSelectorResourceReadData() = %v", cmp.Diff(got, tc.Resource))

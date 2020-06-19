@@ -2,14 +2,17 @@ package pingfederate
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/terraform/helper/resource"
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/terraform"
+	"github.com/iwarapter/pingfederate-sdk-go/services/idpAdapters"
 
-	pf "github.com/iwarapter/pingfederate-sdk-go/pingfederate"
+	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+
+	pf "github.com/iwarapter/pingfederate-sdk-go/pingfederate/models"
 )
 
 func TestAccPingFederateIdpAdapter(t *testing.T) {
@@ -30,6 +33,10 @@ func TestAccPingFederateIdpAdapter(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckPingFederateIdpAdapterExists("pingfederate_idp_adapter.demo"),
 				),
+			},
+			{
+				Config:      testAccPingFederateIdpAdapterConfigWrongPlugin(),
+				ExpectError: regexp.MustCompile(`unable to find plugin_descriptor for com\.pingidentity\.adapters\.httpbasic\.idp\.wrong available plugins:`),
 			},
 		},
 	})
@@ -144,6 +151,51 @@ resource "pingfederate_password_credential_validator" "demo" {
 `, configUpdate)
 }
 
+func testAccPingFederateIdpAdapterConfigWrongPlugin() string {
+	return `
+resource "pingfederate_idp_adapter" "demo" {
+  name = "barrr"
+  plugin_descriptor_ref {
+    id = "com.pingidentity.adapters.httpbasic.idp.wrong"
+  }
+
+  configuration {
+    fields {
+      name  = "Realm"
+      value = "foo"
+    }
+
+  }
+
+  attribute_contract {
+    core_attributes {
+      name      = "username"
+      pseudonym = true
+    }
+    extended_attributes {
+      name = "sub"
+    }
+  }
+  attribute_mapping {
+    attribute_contract_fulfillment {
+      key_name = "sub"
+      source {
+        type = "ADAPTER"
+      }
+      value = "sub"
+    }
+    attribute_contract_fulfillment {
+      key_name = "username"
+      source {
+        type = "ADAPTER"
+      }
+      value = "username"
+    }
+  }
+}
+`
+}
+
 func testAccCheckPingFederateIdpAdapterExists(n string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
@@ -155,8 +207,8 @@ func testAccCheckPingFederateIdpAdapterExists(n string) resource.TestCheckFunc {
 			return fmt.Errorf("No rule ID is set")
 		}
 
-		conn := testAccProvider.Meta().(*pf.PfClient).IdpAdapters
-		result, _, err := conn.GetIdpAdapter(&pf.GetIdpAdapterInput{Id: rs.Primary.ID})
+		conn := testAccProvider.Meta().(pfClient).IdpAdapters
+		result, _, err := conn.GetIdpAdapter(&idpAdapters.GetIdpAdapterInput{Id: rs.Primary.ID})
 
 		if err != nil {
 			return fmt.Errorf("Error: IdpAdapter (%s) not found", n)
