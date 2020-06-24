@@ -109,7 +109,7 @@ resource "pingfederate_oauth_access_token_manager" "reftokenmgrcode" {
   }
 
   attribute_contract {
-    extended_attributes = ["sub",]
+    extended_attributes = ["sub","email","email_verified","family_name","given_name"]
   }
 }
 
@@ -150,6 +150,35 @@ resource "pingfederate_oauth_access_token_mappings" "reftokenmgrcode" {
     }
     value = "subject"
   }
+  attribute_contract_fulfillment {
+    key_name = "email"
+    source {
+      type = "AUTHENTICATION_POLICY_CONTRACT"
+    }
+    value = "subject"
+  }
+  attribute_contract_fulfillment {
+    key_name = "email_verified"
+    source {
+      type = "AUTHENTICATION_POLICY_CONTRACT"
+    }
+    value = "email_verified"
+  }
+  attribute_contract_fulfillment {
+    key_name = "family_name"
+    source {
+      type = "AUTHENTICATION_POLICY_CONTRACT"
+    }
+    value = "family_name"
+  }
+  attribute_contract_fulfillment {
+    key_name = "given_name"
+    source {
+      type = "AUTHENTICATION_POLICY_CONTRACT"
+    }
+    value = "given_name"
+  }
+  
 }
 
 
@@ -349,13 +378,16 @@ resource "pingfederate_idp_adapter" "basicadptr" {
       pseudonym = true
     }
     extended_attributes {
-      name = "first_name"
+      name = "given_name"
     }
     extended_attributes {
       name = "family_name"
     }
        extended_attributes {
       name = "email"
+    }
+    extended_attributes {
+      name = "email_verified"
     }
   }
   attribute_mapping {    
@@ -367,7 +399,7 @@ resource "pingfederate_idp_adapter" "basicadptr" {
       value = "username"
     }
     attribute_contract_fulfillment {
-      key_name = "first_name"
+      key_name = "given_name"
       source {
         type = "TEXT"
       }
@@ -387,6 +419,13 @@ resource "pingfederate_idp_adapter" "basicadptr" {
       }
       value = "homer.simpson@springfield.net"
     }
+    attribute_contract_fulfillment {
+      key_name = "email_verified"
+      source {
+        type = "TEXT"
+      }
+      value = "homer.simpson@springfield.net"
+    }
     # jdbc_attribute_source {
     #   filter      = "\"\""
     #   description = "foo"
@@ -401,38 +440,39 @@ resource "pingfederate_idp_adapter" "basicadptr" {
 
 resource "pingfederate_authentication_policy_contract" "apc_simple" {
   name = "apc_simple"
-  core_attributes = ["subject"]
-  extended_attributes = ["first_name", "family_name", "email",]
+  // no longer need to set core attributes
+  //core_attributes = ["subject"]
+  extended_attributes = ["given_name", "family_name", "email","email_verified"]
 }
 
-resource "pingfederate_oauth_openid_connect_policy" "demo" {
-  policy_id = "foo"
-  name      = "foo"
-  access_token_manager_ref {
-    id = pingfederate_oauth_access_token_manager.reftokenmgrcode.id
-  }
-  attribute_contract {
-    # core_attributes {
-    #   name = "sub"
-    # }
-    extended_attributes {
-      name                 = "sub"
-      include_in_user_info = true
-    }
-  }
-  attribute_mapping {
-    attribute_contract_fulfillment {
-      key_name = "sub"
-      source {
-        type = "access_token"
-      }
-    }
-  }
+# resource "pingfederate_oauth_openid_connect_policy" "demo" {
+#   policy_id = "foo"
+#   name      = "foo"
+#   access_token_manager_ref {
+#     id = pingfederate_oauth_access_token_manager.reftokenmgrcode.id
+#   }
+#   attribute_contract {
+#     # core_attributes {
+#     #   name = "sub"
+#     # }
+#     extended_attributes {
+#       name                 = "sub"
+#       include_in_user_info = true
+#     }
+#   }
+#   attribute_mapping {
+#     attribute_contract_fulfillment {
+#       key_name = "sub"
+#       source {
+#         type = "access_token"
+#       }
+#     }
+#   }
 
-//  scope_attribute_mappings = { //TODO hoping the new TF 2.0.0 SDK will finally support sensible maps
-//    address = ["foo", "bar"]
-// 
-}
+# //  scope_attribute_mappings = { //TODO hoping the new TF 2.0.0 SDK will finally support sensible maps
+# //    address = ["foo", "bar"]
+# // 
+# }
 
 
 resource "pingfederate_oauth_authentication_policy_contract_mapping" "apc_mappings" {
@@ -455,16 +495,16 @@ resource "pingfederate_oauth_authentication_policy_contract_mapping" "apc_mappin
   }
 }
 
-resource "pingfederate_oauth_openid_connect_policy" "demo" {
-  policy_id = "foo"
-  name      = "foo"
+resource "pingfederate_oauth_openid_connect_policy" "demo_oidc_policy" {
+  policy_id = "demo_oidc_policy"
+  name      = "demo_oidc_policy"
   access_token_manager_ref {
-    id = pingfederate_oauth_access_token_manager.my_atm.id
+    id = pingfederate_oauth_access_token_manager.reftokenmgrcode.id
   }
-  attribute_contract {
-    core_attributes {
-      name = "sub"
-    }
+   attribute_contract {
+  #   core_attributes {
+  #     name = "sub"
+  #   }
     extended_attributes {
       name                 = "email"
       include_in_user_info = true
@@ -478,39 +518,44 @@ resource "pingfederate_oauth_openid_connect_policy" "demo" {
       include_in_user_info = true
     }
     extended_attributes {
-      name                 = "name"
+      name                 = "given_name"
       include_in_user_info = true
     }
   }
   attribute_mapping {
     attribute_contract_fulfillment {
       key_name = "sub"
+      value = "sub"
       source {
-        type = "NO_MAPPING"
+        type = "TOKEN"
       }
     }
     attribute_contract_fulfillment {
       key_name = "email"
+      value = "email"
       source {
-        type = "NO_MAPPING"
+        type = "TOKEN"
       }
     }
     attribute_contract_fulfillment {
       key_name = "email_verified"
+      value = "email_verified"
       source {
-        type = "NO_MAPPING"
+        type = "TOKEN"
       }
     }
     attribute_contract_fulfillment {
       key_name = "family_name"
+      value = "family_name"
       source {
-        type = "NO_MAPPING"
+        type = "TOKEN"
       }
     }
     attribute_contract_fulfillment {
-      key_name = "name"
+      key_name = "given_name"
+      value = "given_name"
       source {
-        type = "NO_MAPPING"
+        type = "TOKEN"
       }
     }
   }
@@ -518,4 +563,42 @@ resource "pingfederate_oauth_openid_connect_policy" "demo" {
 //  scope_attribute_mappings = { //TODO hoping the new TF 2.0.0 SDK will finally support sensible maps
 //    address = ["foo", "bar"]
 //  }
+ }
+
+
+resource "pingfederate_authentication_policies" "demo" {
+  fail_if_no_selection = false
+  tracked_http_parameters = ["foo"]
+  default_authentication_sources {
+    type = "IDP_ADAPTER"
+    source_ref {
+      id = pingfederate_idp_adapter.basicadptr.id
+    }
+  }
+  authn_selection_trees {
+    name = "Demo Policy"
+    root_node {
+      action {
+        type = "AUTHN_SOURCE"
+        authentication_source {
+          type = "IDP_ADAPTER"
+          source_ref {
+            id = pingfederate_idp_adapter.basicadptr.id
+          }
+        }
+      }
+      children {
+        action {
+          type = "DONE"
+          context = "Fail"
+        }
+      }
+      children {
+        action {
+          type = "DONE"
+          context = "Success"
+        }
+      }
+    }
+  }
 }
