@@ -560,6 +560,7 @@ resource "pingfederate_oauth_openid_connect_policy" "demo_oidc_policy" {
     }
   }
 
+<<<<<<< HEAD
 //  scope_attribute_mappings = { //TODO hoping the new TF 2.0.0 SDK will finally support sensible maps
 //    address = ["foo", "bar"]
 //  }
@@ -602,3 +603,14 @@ resource "pingfederate_authentication_policies" "demo" {
     }
   }
 }
+||||||| 5eb37b5
+//  scope_attribute_mappings = { //TODO hoping the new TF 2.0.0 SDK will finally support sensible maps
+//    address = ["foo", "bar"]
+//  }
+}
+=======
+  //  scope_attribute_mappings = { //TODO hoping the new TF 2.0.0 SDK will finally support sensible maps
+  //    address = ["foo", "bar"]
+  //  }
+}
+>>>>>>> ea76a97695bec3188db506a6ef0056fcdb4f52e7
