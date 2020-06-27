@@ -225,10 +225,10 @@ resource "pingfederate_oauth_client" "myoauthclientid" {
 resource "pingfederate_oauth_client" "myoauthcodeclientid" {
   client_id = "myoauthcodeclientid"
   name      = "myoauthcodeclientid"
-  redirect_uris = ["https://www.bob.com",]
+  redirect_uris = ["https://app.getpostman.com/oauth2/callback",]
 
   grant_types = [
-    "CLIENT_CREDENTIALS","AUTHORIZATION_CODE",
+    "CLIENT_CREDENTIALS","AUTHORIZATION_CODE","ACCESS_TOKEN_VALIDATION",
   ]
 
   restricted_response_types = ["code",]
@@ -267,17 +267,35 @@ resource "pingfederate_oauth_client" "myoauthcodeclientid" {
 
 resource "pingfederate_oauth_auth_server_settings" "settings" {
   scopes {
-    name        = "oidc"
-    description = "oidc"
+    name        = "openid"
+    description = "openid"
   }
-    scopes {
+  scopes {
     name        = "profile"
     description = "profile"
+  }
+  scopes {
+    name        = "email"
+    description = "email"
+  }
+  scopes {
+    name        = "address"
+    description = "address"
+  }
+    scopes {
+    name        = "phone"
+    description = "phone"
   }
     scopes {
     name        = "email"
     description = "email"
   }
+    scopes {
+    name        = "idp"
+    description = "idp"
+  }
+
+
 
 
   #   persistent_grant_contract {
@@ -560,57 +578,7 @@ resource "pingfederate_oauth_openid_connect_policy" "demo_oidc_policy" {
     }
   }
 
-<<<<<<< HEAD
-//  scope_attribute_mappings = { //TODO hoping the new TF 2.0.0 SDK will finally support sensible maps
-//    address = ["foo", "bar"]
-//  }
- }
-
-
-resource "pingfederate_authentication_policies" "demo" {
-  fail_if_no_selection = false
-  tracked_http_parameters = ["foo"]
-  default_authentication_sources {
-    type = "IDP_ADAPTER"
-    source_ref {
-      id = pingfederate_idp_adapter.basicadptr.id
-    }
-  }
-  authn_selection_trees {
-    name = "Demo Policy"
-    root_node {
-      action {
-        type = "AUTHN_SOURCE"
-        authentication_source {
-          type = "IDP_ADAPTER"
-          source_ref {
-            id = pingfederate_idp_adapter.basicadptr.id
-          }
-        }
-      }
-      children {
-        action {
-          type = "DONE"
-          context = "Fail"
-        }
-      }
-      children {
-        action {
-          type = "DONE"
-          context = "Success"
-        }
-      }
-    }
-  }
-}
-||||||| 5eb37b5
-//  scope_attribute_mappings = { //TODO hoping the new TF 2.0.0 SDK will finally support sensible maps
-//    address = ["foo", "bar"]
-//  }
-}
-=======
   //  scope_attribute_mappings = { //TODO hoping the new TF 2.0.0 SDK will finally support sensible maps
   //    address = ["foo", "bar"]
   //  }
 }
->>>>>>> ea76a97695bec3188db506a6ef0056fcdb4f52e7
